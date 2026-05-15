@@ -3,6 +3,9 @@ import os
 import yaml
 import flask
 
+import importlib
+
+
 app = flask.Flask(__name__)
 
 
@@ -23,16 +26,35 @@ def print_nametag(format_string, person):
     print(format_string.format(person=person))
 
 
+ALLOWED_MODULES = {
+    2: "urllib.request",   # standard library
+    3: "urllib3"           # external package
+}
+
 def fetch_website(urllib_version, url):
-    # Import the requested version (2 or 3) of urllib
-    exec(f"import urllib{urllib_version} as urllib", globals())
-    # Fetch and print the requested URL
- 
-    try: 
-        http = urllib.PoolManager()
-        r = http.request('GET', url)
-    except:
-        print('Exception')
+    try:
+        # Validate input
+        if urllib_version not in ALLOWED_MODULES:
+            raise ValueError("Unsupported urllib version")
+
+        # Safely import module
+        module_name = ALLOWED_MODULES[urllib_version]
+        urllib_module = importlib.import_module(module_name)
+
+        # Handle urllib3
+        if urllib_version == 3:
+            http = urllib_module.PoolManager()
+            response = http.request("GET", url)
+            print(response.data)
+
+        # Handle urllib.request
+        elif urllib_version == 2:
+            response = urllib_module.urlopen(url)
+            print(response.read())
+
+    except Exception as e:
+        print(f"Exception: {e}")
+
 
 
 def load_yaml(filename):
